@@ -151,7 +151,7 @@ public class RNFSManager extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void read(String filepath, int length, int position, Promise promise){
+  public void read(final String filepath, final int length, final int position, final Promise promise){
     new Thread(new Runnable() {
       public void run() {
         try {
