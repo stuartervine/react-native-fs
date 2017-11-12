@@ -152,31 +152,35 @@ public class RNFSManager extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void read(String filepath, int length, int position, Promise promise){
-    try {
-      File file = new File(filepath);
+    new Thread(new Runnable() {
+      public void run() {
+        try {
+          File file = new File(filepath);
 
-      if (file.isDirectory()) {
-        rejectFileIsDirectory(promise);
-        return;
+          if (file.isDirectory()) {
+            rejectFileIsDirectory(promise);
+            return;
+          }
+
+          if (!file.exists()) {
+            rejectFileNotFound(promise, filepath);
+            return;
+          }
+
+          FileInputStream inputStream = new FileInputStream(filepath);
+          byte[] buffer = new byte[length];
+          inputStream.skip(position);
+          inputStream.read(buffer,0,length);
+
+          String base64Content = Base64.encodeToString(buffer, Base64.NO_WRAP);
+
+          promise.resolve(base64Content);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            reject(promise, filepath, ex);
+        }
       }
-
-      if (!file.exists()) {
-        rejectFileNotFound(promise, filepath);
-        return;
-      }
-
-      FileInputStream inputStream = new FileInputStream(filepath);
-      byte[] buffer = new byte[length];
-      inputStream.skip(position);
-      inputStream.read(buffer,0,length);
-
-      String base64Content = Base64.encodeToString(buffer, Base64.NO_WRAP);
-
-      promise.resolve(base64Content);
-    } catch (Exception ex) {
-        ex.printStackTrace();
-        reject(promise, filepath, ex);
-    }
+    }).start();
   }
 
   @ReactMethod
