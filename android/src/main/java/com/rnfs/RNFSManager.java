@@ -186,12 +186,12 @@ public class RNFSManager extends ReactContextBaseJavaModule {
 
         if (file.isDirectory()) {
           rejectFileIsDirectory(promise);
-          return;
+          return "File is directory";
         }
 
         if (!file.exists()) {
           rejectFileNotFound(promise, fileReadOperation.filename);
-          return;
+          return "File not found";
         }
 
         FileInputStream inputStream = new FileInputStream(fileReadOperation.filename);
@@ -201,7 +201,8 @@ public class RNFSManager extends ReactContextBaseJavaModule {
 
         return Base64.encodeToString(buffer, Base64.NO_WRAP);
       } catch (Exception ex) {
-        return ex.getMessage();
+        this.promise.reject("ENOENT", ex.getMessage());
+        return null;
       }
     }
 
@@ -209,9 +210,7 @@ public class RNFSManager extends ReactContextBaseJavaModule {
     }
 
     protected void onPostExecute(String result) {
-      if(result == null) {
-        promise.reject(result);
-      } else {
+      if(result != null) {
         promise.resolve(result);
       }
     }
