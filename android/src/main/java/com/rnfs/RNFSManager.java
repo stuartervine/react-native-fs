@@ -153,7 +153,7 @@ public class RNFSManager extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void read(final String filepath, final int length, final int position, final Promise promise){
-    new ReadFileAsyncTask(promise).doInBackground(FileReadOperation.fileReadOperation(filepath, length, position));
+    new ReadFileAsyncTask(promise).execute(FileReadOperation.fileReadOperation(filepath, length, position));
   }
 
   private static class FileReadOperation {
@@ -180,18 +180,19 @@ public class RNFSManager extends ReactContextBaseJavaModule {
     }
 
     protected String doInBackground(FileReadOperation... fileReadOperations) {
+      System.out.println("Starting reading file.");
       FileReadOperation fileReadOperation = fileReadOperations[0];
       try {
         File file = new File(fileReadOperation.filename);
 
         if (file.isDirectory()) {
           rejectFileIsDirectory(promise);
-          return "File is directory";
+          return null;
         }
 
         if (!file.exists()) {
           rejectFileNotFound(promise, fileReadOperation.filename);
-          return "File not found";
+          return null;
         }
 
         FileInputStream inputStream = new FileInputStream(fileReadOperation.filename);
@@ -210,6 +211,7 @@ public class RNFSManager extends ReactContextBaseJavaModule {
     }
 
     protected void onPostExecute(String result) {
+      System.out.println("Background read finished.");
       if(result != null) {
         promise.resolve(result);
       }
