@@ -2,6 +2,7 @@ package com.rnfs;
 
 import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
+import android.os.AsyncTask;
 import android.os.Environment;
 import android.os.StatFs;
 import android.support.annotation.Nullable;
@@ -152,35 +153,68 @@ public class RNFSManager extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void read(final String filepath, final int length, final int position, final Promise promise){
-    new Thread(new Runnable() {
-      public void run() {
-        try {
-          File file = new File(filepath);
+    new ReadFileAsyncTask(promise).doInBackground(FileReadOperation.fileReadOperation(filepath, length, position));
+  }
 
-          if (file.isDirectory()) {
-            rejectFileIsDirectory(promise);
-            return;
-          }
+  private static class FileReadOperation {
+    private final String filename;
+    private final int length;
+    private final int position;
 
-          if (!file.exists()) {
-            rejectFileNotFound(promise, filepath);
-            return;
-          }
+    private FileReadOperation(String filename, int length, int position) {
+      this.filename = filename;
+      this.length = length;
+      this.position = position;
+    }
 
-          FileInputStream inputStream = new FileInputStream(filepath);
-          byte[] buffer = new byte[length];
-          inputStream.skip(position);
-          inputStream.read(buffer,0,length);
+    public static FileReadOperation fileReadOperation(String filename, int length, int position) {
+      return new FileReadOperation(filename, length, position);
+    }
+  }
 
-          String base64Content = Base64.encodeToString(buffer, Base64.NO_WRAP);
+  private class ReadFileAsyncTask extends AsyncTask<FileReadOperation, Integer, String> {
+    private Promise promise;
 
-          promise.resolve(base64Content);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            reject(promise, filepath, ex);
+    public ReadFileAsyncTask(Promise promise) {
+      this.promise = promise;
+    }
+
+    protected String doInBackground(FileReadOperation... fileReadOperations) {
+      FileReadOperation fileReadOperation = fileReadOperations[0];
+      try {
+        File file = new File(fileReadOperation.filename);
+
+        if (file.isDirectory()) {
+          rejectFileIsDirectory(promise);
+          return;
         }
+
+        if (!file.exists()) {
+          rejectFileNotFound(promise, fileReadOperation.filename);
+          return;
+        }
+
+        FileInputStream inputStream = new FileInputStream(fileReadOperation.filename);
+        byte[] buffer = new byte[fileReadOperation.length];
+        inputStream.skip(fileReadOperation.position);
+        inputStream.read(buffer,0,fileReadOperation.length);
+
+        return Base64.encodeToString(buffer, Base64.NO_WRAP);
+      } catch (Exception ex) {
+        return ex.getMessage();
       }
-    }).start();
+    }
+
+    protected void onProgressUpdate(Integer... progress) {
+    }
+
+    protected void onPostExecute(String result) {
+      if(result == null) {
+        promise.reject(result);
+      } else {
+        promise.resolve(result);
+      }
+    }
   }
 
   @ReactMethod
